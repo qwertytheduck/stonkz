@@ -1,0 +1,27 @@
+import os
+import requests
+
+API_KEY = os.environ["API_KEY"]
+SECRET_KEY = os.environ["SECRET_KEY"]
+
+symbol = "AAPL"
+buy_below = 340.00
+sell_above = 347.00
+
+headers = {
+    "APCA-API-KEY-ID": API_KEY,
+    "APCA-API-SECRET-KEY": SECRET_KEY
+}
+
+price = requests.get(f"https://data.alpaca.markets/v2/stocks/{symbol}/trades/latest", headers=headers).json()["trade"]["p"]
+pos = requests.get(f"https://paper-api.alpaca.markets/v2/positions/{symbol}", headers=headers)
+owned = int(float(pos.json()["qty"])) if pos.status_code == 200 else 0
+
+print(f"{symbol} is ${price} | Shares owned: {owned}")
+
+if owned == 0 and price <= buy_below:
+    r = requests.post("https://paper-api.alpaca.markets/v2/orders", json={"symbol": symbol, "qty": "1", "side": "buy", "type": "market", "time_in_force": "day"}, headers=headers)
+    print(f"BOUGHT 1 {symbol} (status {r.status_code})")
+elif owned > 0 and price >= sell_above:
+    r = requests.post("https://paper-api.alpaca.markets/v2/orders", json={"symbol": symbol, "qty": "1", "side": "sell", "type": "market", "time_in_force": "day"}, headers=headers)
+    print(f"SOLD 1 {symbol} (status {r.status_code})")
